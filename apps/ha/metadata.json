@@ -17,6 +17,7 @@
   ],
   "data": [
       {"name":"ha.trigger.json" },
+      {"name":"ha.settings.json" },
       {"name":"ha.json" }
   ],
   "storage": [
