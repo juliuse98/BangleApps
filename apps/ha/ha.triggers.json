@@ -1,0 +1,4 @@
+[
+  {"display": "ON/OFF", "trigger": "TOGGLE_LIGHT", "icon":"light"},
+  {"display": "LOCK/UNLOCK", "trigger": "TOGGLE_DOOR", "icon":"door"}
+]
