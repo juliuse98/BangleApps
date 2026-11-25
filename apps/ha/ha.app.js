@@ -9,7 +9,7 @@ var slider;
 
 let settings = {
   timeOut:
-    (require("Storage").readJSON("messages_light.settings.json", true) || {})
+    (require("Storage").readJSON("ha.settings.json", true) || {})
       .timeOut || "Off",
 };
 
