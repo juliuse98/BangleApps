@@ -22,6 +22,7 @@
   "storage": [
     {"name":"ha.app.js","url":"ha.app.js"},
     {"name":"ha.trigger.json","url":"ha.trigger.json"},
+    {"name":"ha.settings.js","url":"ha.settings.js"},
     {"name":"ha.lib.js","url":"ha.lib.js"},
     {"name":"ha.clkinfo.js","url":"ha.clkinfo.js"},
     {"name":"ha.img","url":"ha.icon.js","evaluate":true}
