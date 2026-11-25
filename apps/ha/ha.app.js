@@ -7,6 +7,12 @@ var position=0;
 var triggers = ha.getTriggers();
 var slider;
 
+let settings = {
+  timeOut:
+    (require("Storage").readJSON("messages_light.settings.json", true) || {})
+      .timeOut || "Off",
+};
+
 function draw() {
   g.reset().clearRect(Bangle.appRect);
 
@@ -88,6 +94,7 @@ var lastLevel;
 var lastTouch;
 
 function onSlide(mode, level, e) {
+  updateTimeout();
   lastTouch = Date.now();
 
   if (!e) return;
@@ -129,7 +136,20 @@ function sendTrigger() {
     });
 }
 
+let timeout;
+const updateTimeout = function () {
+  if (settings.timeOut != "Off") {
+    removeTimeout();
+    let time = parseInt(settings.timeOut);
+    timeout = setTimeout(() => {
+    load();
+  }, time * 1000);
+}};
+const removeTimeout = function () {
+  if (timeout) clearTimeout(timeout);
+};
 Bangle.on('touch', (btn, e) => {
+  updateTimeout();
   if (Date.now() - lastTouch < 250) return;
   lastTouch = Date.now();
 
@@ -147,7 +167,12 @@ Bangle.on('touch', (btn, e) => {
   }
 });
 
+Bangle.on('drag', () => {
+  updateTimeout();
+});
+
 Bangle.on("swipe", (lr,ud) => {
+  updateTimeout();
   if (slider) return; // "disable" swiping on sliders
   if (Date.now() - lastTouch < 250) return;
   lastTouch = Date.now();
@@ -170,4 +195,5 @@ Bangle.drawWidgets();
 
 // Draw app
 draw();
+updateTimeout();
 setWatch(_=>load(), BTN1);
