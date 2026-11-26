@@ -397,20 +397,6 @@ function startLockWatch() {
 // Startup
 /////////////////////
 
-function startEmulator() {
-  // delete this
-  info({
-    t: "musicinfo",
-    artist: "Some Artist Name that is very long yeaa",
-    album: "The Album Name",
-    track: "The Track Title Goes Here",
-    dur: 241,
-    c: 2,
-    n: 2,
-  });
-  state({ t: "musicstate", state: "play", position: 0, shuffle: 1, repeat: 1 });
-}
-
 function startWatches() {
   startButtonWatches();
   startTouchWatches();
@@ -420,7 +406,6 @@ function startWatches() {
 function start() {
   makeUI();
   startWatches();
-  startEmulator();
 }
 
 function init() {
