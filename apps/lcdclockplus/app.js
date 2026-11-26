@@ -1,5 +1,28 @@
-Graphics.prototype.setFont7Seg = function() {
-  return this.setFontCustom(atob("AAAAAAAAACAQAAAAIAd0BgLuAAAAAAdwAB0RiLgAAAiMRdwAcAQCDuADgiMRBwAd0RiIOAAAgEAdwAd0RiLuADgiMRdwAABsADuiEQdwAdwRCIOADugMBAAABwRCLuADuiMRAAAd0QiAAADugMBBwAdwQCDuADuAAAAAAAABALuADuCAQdwAdwBAIAADugEAcEAdwAd0AgDuADugMBdwAd0QiDgADgiEQdwAd0AgAAADgiMRBwAAEAgDuADuAIBdwAdwBALuADuAIBBwBdwAdwQCDuADgCAQdwAB0RiLgAA="), 32, atob("BQAAAAAAAAAAAAAAAAUCAAUFBQUFBQUFBQUDAAAAAAAABQUFBQUFBQUFBQUFBwUFBQUFBQUFBQcFBQU="), 9);
+Modules.addCached("Font7x11Numeric7Seg", function () {
+  exports.add = function (a) {
+    a.prototype.setFont7x11Numeric7Seg = function () {
+      return this.setFontCustom(
+        atob(
+          "AAAAAAAAAAAAAAAEAIAQAgAAAAAIAHvQBgDAGAL3gAAAAAAAAAAHvAAA9CGEMIYQvAAAACEMIYQwhe8AB4AIAQAgBA94ADwIQwhhDCEDwAHvQhhDCGEIHgAAAgBACAEAHvAAe9CGEMIYQveAA8CEMIYQwhe8AAABjDGAAAA96EEIIQQge8AB7wIQQghBCB4AD3oAwBgDAEAAAAPAhBCCEEL3gAPehDCGEMIQAAAe9CCEEIIQAAAA",
+        ),
+        32,
+        atob("BwAAAAAAAAAAAAAAAAcCAAcHBwcHBwcHBwcFAAAAAAAABwcHBwcH"),
+        11,
+      );
+    };
+  };
+});
+Graphics.prototype.setFont7Seg = function () {
+  return this.setFontCustom(
+    atob(
+      "AAAAAAAAACAQAAAAIAd0BgLuAAAAAAdwAB0RiLgAAAiMRdwAcAQCDuADgiMRBwAd0RiIOAAAgEAdwAd0RiLuADgiMRdwAABsADuiEQdwAdwRCIOADugMBAAABwRCLuADuiMRAAAd0QiAAADugMBBwAdwQCDuADuAAAAAAAABALuADuCAQdwAdwBAIAADugEAcEAdwAd0AgDuADugMBdwAd0QiDgADgiEQdwAd0AgAAADgiMRBwAAEAgDuADuAIBdwAdwBALuADuAIBBwBdwAdwQCDuADgCAQdwAB0RiLgAA=",
+    ),
+    32,
+    atob(
+      "BQAAAAAAAAAAAAAAAAUCAAUFBQUFBQUFBQUDAAAAAAAABQUFBQUFBQUFBQUFBwUFBQUFBQUFBQcFBQU=",
+    ),
+    9,
+  );
 };
 /* font created with:
 require("sevenseg_font_tools").createFont({
@@ -21,104 +44,246 @@ odd h`,
 });
 */
 
-{ // must be inside our own scope here so that when we are unloaded everything disappears
+{
+  // must be inside our own scope here so that when we are unloaded everything disappears
   // we also define functions using 'let fn = function() {..}' for the same reason. function decls are global
-let drawTimeout;
+  let drawTimeout;
 
-require("Font7x11Numeric7Seg").add(Graphics);
-const is12Hour = (require("Storage").readJSON("setting.json", 1) || {})["12hour"];
+  require("Font7x11Numeric7Seg").add(Graphics);
+  var is12Hour = (require("Storage").readJSON("setting.json", 1) || {})[
+    "12hour"
+  ];
 
-// Actually draw the watch face
-let draw = function() {
-  var x = R.x + R.w/2;
-  var y = R.y + 48;
-  g.reset().setColor(g.theme.bg).setBgColor(g.theme.fg);
-  g.clearRect(R.x,bar1Y+2,R.x2,bar2Y-2);
-  var date = new Date();
-  var timeStr = require("locale").time(date, 1); // Hour and minute
+  // =========================================================================
+  // HIER WUNSCH-EINTRÄGE AUSWÄHLEN: [Kategorie, Unterpunkt]
+  // 1 Eintrag  = fest in diesem Kästchen
+  // Mehrere    = per Tipp/Swipe in diesem Kästchen durchschaltbar
+  // =========================================================================
+  var CLOCK_INFO_SLOTS = {
+    botRight: [
+      [2, 2],
+      [2, 0],
+    ], // Weather: Temperatur, dann Condition
+    topRight: [
+      [0, 2],
+      [0, 1],
+    ], // Bangle: Altitude, dann BLE
+    botLeft: [
+      [1, 0],
+      [1, 1],
+    ], // Health: Steps, dann HRM
+    topLeft: [
+      [0, 0],
+      [4, 4],
+    ], // Bangle: Battery, dann Timer +5 min
+  };
 
-  // Time
-  if (is12Hour) {
-    g.setFontAlign(-1, 0).setFont("7x11Numeric7Seg:4").drawString(timeStr, R.x, y+39);
-    g.setFontAlign(1, 0).setFont("7Seg:2").drawString(require("locale").meridian(date).toUpperCase(), R.x2, y+30+(date.getHours() >= 12 ? 20 : 0));
-  } else {
-    g.setFontAlign(0, 0).setFont("7x11Numeric7Seg:4").drawString(timeStr, x, y+39);
+  function buildSlotItems(allItems, slotList) {
+    if (!Array.isArray(slotList) || !slotList.length) return allItems;
+    var out = [];
+    for (var i = 0; i < slotList.length; i++) {
+      var pair = slotList[i];
+      var cat = allItems[pair[0]];
+      if (!cat) continue;
+      if (cat.items && cat.items[pair[1]] !== undefined) {
+        out.push({
+          name: cat.name,
+          img: cat.img,
+          items: [cat.items[pair[1]]],
+        });
+      } else {
+        out.push(cat);
+      }
+    }
+    return out.length ? out : allItems;
   }
 
-  // Day of week
-  g.setFontAlign(-1, 0).setFont("7Seg:2").drawString(require("locale").dow(date, 1).toUpperCase(), R.x+2, y);
+  // Actually draw the watch face
+  let draw = function () {
+    // >>> SEKUNDEN-CODE START (Lock-Status abfragen)
+    var locked = Bangle.isLocked();
+    // <<< SEKUNDEN-CODE ENDE
 
-  // Date
-  g.setFontAlign(-1, 0).setFont("7Seg:2").drawString(require("locale").month(new Date(), 2).toUpperCase(), x, y);
-  g.setFontAlign(1, 0).setFont("7Seg:2").drawString(date.getDate(), R.x2 - 6, y);
+    var x = R.x + R.w / 2;
+    var y = R.y + 48;
+    g.reset().setColor(g.theme.bg).setBgColor(g.theme.fg);
+    g.clearRect(R.x, bar1Y + 2, R.x2, bar2Y - 2);
+    var date = new Date();
+    var timeStr = require("locale").time(date, 1); // Hour and minute
 
-  // queue next draw
-  if (drawTimeout) clearTimeout(drawTimeout);
-  drawTimeout = setTimeout(function() {
-    drawTimeout = undefined;
-    draw();
-  }, 60000 - (Date.now() % 60000));
-};
+    // Time
+    if (is12Hour) {
+      g.setFontAlign(-1, 0)
+        .setFont("7x11Numeric7Seg:4")
+        .drawString(timeStr, R.x, y + 39);
+      g.setFontAlign(1, 0)
+        .setFont("7Seg:2")
+        .drawString(
+          require("locale").meridian(date).toUpperCase(),
+          R.x2,
+          y + 30 + (date.getHours() >= 12 ? 20 : 0),
+        );
+    } else {
+      g.setFontAlign(0, 0)
+        .setFont("7x11Numeric7Seg:4")
+        .drawString(timeStr, x - 5, y + 39);
+    }
 
-let clockInfoDraw = (itm, info, options) => {
-  //let texty = options.y+41;
-  g.reset().setFont("7Seg").setColor(g.theme.bg).setBgColor(g.theme.fg);
-  if (options.focus) g.setBgColor("#FF0");
-  g.clearRect({x:options.x,y:options.y,w:options.w,h:options.h,r:8});
+    // >>> SEKUNDEN-CODE START (Sekunden-Text; secX, secY und Größe nach : anpassen)
+    if (!locked) {
+      var secStr = ("0" + date.getSeconds()).slice(-2);
+      var secX = x + 74;
+      var secY = y + 50;
+      g.setFontAlign(0, 0)
+        .setFont("7x11Numeric7Seg:2")
+        .drawString(secStr, secX, secY);
+    }
+    // <<< SEKUNDEN-CODE ENDE
 
-  if (info.img) g.drawImage(info.img, options.x+1,options.y+2);
-  var text = info.text.toString().toUpperCase().replace(/[^A-Z0-9.:-]/g, "");
-  if (g.setFont("7Seg:2").stringWidth(text)+24-2>options.w) g.setFont("7Seg");
-  g.setFontAlign(0,-1).drawString(text, options.x+options.w/2+13, options.y+6);
-};
+    // Day of week
+    g.setFontAlign(-1, 0)
+      .setFont("7Seg:2")
+      .drawString(require("locale").dow(date, 1).toUpperCase(), R.x + 2, y);
 
-// Show launcher when middle button pressed
-Bangle.setUI({
-  mode : "clock",
-  remove : function() {
-    // Called to unload all of the clock app
+    // Date
+    g.setFontAlign(-1, 0)
+      .setFont("7Seg:2")
+      .drawString(require("locale").month(new Date(), 2).toUpperCase(), x, y);
+    g.setFontAlign(1, 0)
+      .setFont("7Seg:2")
+      .drawString(date.getDate(), R.x2 - 6, y);
+
+    // >>> SEKUNDEN-CODE START (1s-Takt wenn entsperrt, sonst 1-Minuten-Takt)
     if (drawTimeout) clearTimeout(drawTimeout);
-    drawTimeout = undefined;
-    delete Graphics.prototype.setFont7Seg;
-    // remove info menu
-    clockInfoMenu.remove();
-    delete clockInfoMenu;
-    clockInfoMenu2.remove();
-    delete clockInfoMenu2;
-    clockInfoMenu3.remove();
-    delete clockInfoMenu3;
-    clockInfoMenu4.remove();
-    delete clockInfoMenu4;
-    // reset theme
-    g.setTheme(oldTheme);
-  }});
-// Load widgets
-Bangle.loadWidgets();
-// Work out sizes
-let R = Bangle.appRect;
-R.x+=1;
-R.y+=1;
-R.x2-=1;
-R.y2-=1;
-R.w-=1;
-R.h-=1;
-let midX = R.x+R.w/2;
-let bar1Y = R.y+30;
-let bar2Y = R.y2-30;
-// Clear the screen once, at startup
-let oldTheme = g.theme;
-g.setTheme({bg:"#000",fg:"#3ff",dark:true}).clear(1);
-g.fillRect({x:R.x, y:R.y, w:R.w, h:R.h, r:8})
-  .clearRect(R.x,bar1Y,R.w,bar1Y+1)
-  .clearRect(midX,R.y,midX,bar1Y)
-  .clearRect(R.x,bar2Y,R.w,bar2Y+1)
-  .clearRect(midX,bar2Y,midX,R.y2+1);
-draw();
-Bangle.drawWidgets();
-// Allocate and draw clockinfos
-let clockInfoItems = require("clock_info").load();
-let clockInfoMenu = require("clock_info").addInteractive(clockInfoItems, { app:"lcdclock", x:R.x, y:R.y, w:midX-2, h:bar1Y-R.y-2, draw : clockInfoDraw});
-let clockInfoMenu2 = require("clock_info").addInteractive(clockInfoItems, {  app:"lcdclock", x:midX+1, y:R.y, w:midX-2, h:bar1Y-R.y-2, draw : clockInfoDraw});
-let clockInfoMenu3 = require("clock_info").addInteractive(clockInfoItems, {  app:"lcdclock", x:R.x, y:bar2Y+2, w:midX-2, h:bar1Y-R.y-2, draw : clockInfoDraw});
-let clockInfoMenu4 = require("clock_info").addInteractive(clockInfoItems, {  app:"lcdclock", x:midX+1, y:bar2Y+2, w:midX-2, h:bar1Y-R.y-2, draw : clockInfoDraw});
+    var nextDelay = locked ? 60000 - (Date.now() % 60000) : 1000;
+    drawTimeout = setTimeout(function () {
+      drawTimeout = undefined;
+      draw();
+    }, nextDelay);
+    // <<< SEKUNDEN-CODE ENDE
+  };
+
+  // >>> SEKUNDEN-CODE START (Sofort neu zeichnen beim Sperren/Entsperren)
+  Bangle.on("lock", draw);
+  // <<< SEKUNDEN-CODE ENDE
+
+  let clockInfoDraw = (itm, info, options) => {
+    //let texty = options.y+41;
+    g.reset().setFont("7Seg").setColor(g.theme.bg).setBgColor(g.theme.fg);
+    if (options.focus) g.setBgColor("#FF0");
+    g.clearRect({
+      x: options.x,
+      y: options.y,
+      w: options.w,
+      h: options.h,
+      r: 8,
+    });
+
+    if (info.img) g.drawImage(info.img, options.x + 1, options.y + 2);
+    var text = info.text
+      .toString()
+      .toUpperCase()
+      .replace(/[^A-Z0-9.:-]/g, "");
+    if (g.setFont("7Seg:2").stringWidth(text) + 24 - 2 > options.w)
+      g.setFont("7Seg");
+    g.setFontAlign(0, -1).drawString(
+      text,
+      options.x + options.w / 2 + 13,
+      options.y + 6,
+    );
+  };
+
+  // Show launcher when middle button pressed
+  Bangle.setUI({
+    mode: "clock",
+    remove: function () {
+      // Called to unload all of the clock app
+      if (drawTimeout) clearTimeout(drawTimeout);
+      drawTimeout = undefined;
+      // >>> SEKUNDEN-CODE START (Listener beim Verlassen aufräumen)
+      Bangle.removeListener("lock", draw);
+      // <<< SEKUNDEN-CODE ENDE
+      delete Graphics.prototype.setFont7Seg;
+      // remove info menu
+      clockInfoMenu.remove();
+      delete clockInfoMenu;
+      clockInfoMenu2.remove();
+      delete clockInfoMenu2;
+      clockInfoMenu3.remove();
+      delete clockInfoMenu3;
+      clockInfoMenu4.remove();
+      delete clockInfoMenu4;
+      // reset theme
+      g.setTheme(oldTheme);
+    },
+  });
+  // Load widgets
+  Bangle.loadWidgets();
+  // Work out sizes
+  let R = Bangle.appRect;
+  R.x += 1;
+  R.y += 1;
+  R.x2 -= 1;
+  R.y2 -= 1;
+  R.w -= 1;
+  R.h -= 1;
+  let midX = R.x + R.w / 2;
+  let bar1Y = R.y + 30;
+  let bar2Y = R.y2 - 30;
+  // Clear the screen once, at startup
+  let oldTheme = g.theme;
+  g.setTheme({ bg: "#000", fg: "#3ff", dark: true }).clear(1);
+  g.fillRect({ x: R.x, y: R.y, w: R.w, h: R.h, r: 8 })
+    .clearRect(R.x, bar1Y, R.w, bar1Y + 1)
+    .clearRect(midX, R.y, midX, bar1Y)
+    .clearRect(R.x, bar2Y, R.w, bar2Y + 1)
+    .clearRect(midX, bar2Y, midX, R.y2 + 1);
+  draw();
+  Bangle.drawWidgets();
+  // Allocate and draw clockinfos
+  let clockInfoItems = require("clock_info").load();
+  let clockInfoMenu = require("clock_info").addInteractive(
+    buildSlotItems(clockInfoItems, CLOCK_INFO_SLOTS.topLeft),
+    {
+      app: "lcdclock",
+      x: R.x,
+      y: R.y,
+      w: midX - 2,
+      h: bar1Y - R.y - 2,
+      draw: clockInfoDraw,
+    },
+  );
+  let clockInfoMenu2 = require("clock_info").addInteractive(
+    buildSlotItems(clockInfoItems, CLOCK_INFO_SLOTS.topRight),
+    {
+      app: "lcdclock",
+      x: midX + 1,
+      y: R.y,
+      w: midX - 2,
+      h: bar1Y - R.y - 2,
+      draw: clockInfoDraw,
+    },
+  );
+  let clockInfoMenu3 = require("clock_info").addInteractive(
+    buildSlotItems(clockInfoItems, CLOCK_INFO_SLOTS.botLeft),
+    {
+      app: "lcdclock",
+      x: R.x,
+      y: bar2Y + 2,
+      w: midX - 2,
+      h: bar1Y - R.y - 2,
+      draw: clockInfoDraw,
+    },
+  );
+  let clockInfoMenu4 = require("clock_info").addInteractive(
+    buildSlotItems(clockInfoItems, CLOCK_INFO_SLOTS.botRight),
+    {
+      app: "lcdclock",
+      x: midX + 1,
+      y: bar2Y + 2,
+      w: midX - 2,
+      h: bar1Y - R.y - 2,
+      draw: clockInfoDraw,
+    },
+  );
 }
