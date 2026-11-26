@@ -1,0 +1,19 @@
+{
+  "id": "timeoutlib",
+  "name": "Timeout Lib",
+  "version": "0.01",
+  "author": "juliuse98",
+  "description": "A Library to provide timeout functionality to apps",
+  "icon": "timeoutlib.png",
+  "type": "lib",
+  "tags": "tool",
+  "readme": "README.md",
+  "supports": ["BANGLEJS2"],
+  "data": [
+      {"name":"timeoutlib.settings.json" }
+  ],
+  "storage": [
+    {"name":"timeoutlib.lib.js","url":"lib.js"},
+    {"name":"timeoutlib.settings.js","url":"settings.js"}
+  ]
+}

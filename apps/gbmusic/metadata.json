@@ -17,6 +17,7 @@
     {"name":"gbmusic.app.js","url":"app.js"},
     {"name":"gbmusic.settings.js","url":"settings.js"},
     {"name":"gbmusic.boot.js","url":"boot.js"},
+    {"name":"gbmusic.lib.js","url":"lib.js"},
     {"name":"gbmusic.img","url":"icon.js","evaluate":true}
   ],
   "data": [{"name":"gbmusic.json"},{"name":"gbmusic.load.json"}]
